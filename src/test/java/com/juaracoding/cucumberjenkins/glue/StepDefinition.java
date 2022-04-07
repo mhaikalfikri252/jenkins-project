@@ -1,0 +1,122 @@
+package com.juaracoding.cucumberjenkins.glue;
+
+import static org.junit.Assert.assertEquals;
+
+import org.openqa.selenium.JavascriptExecutor;
+import org.openqa.selenium.WebDriver;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.test.context.ContextConfiguration;
+
+import com.juaracoding.cucumberjenkins.config.AutomationFrameworkConfig;
+import com.juaracoding.cucumberjenkins.drivers.DriverSingleton;
+import com.juaracoding.cucumberjenkins.pages.BookingPage;
+import com.juaracoding.cucumberjenkins.pages.LoginPage;
+import com.juaracoding.cucumberjenkins.utils.ConfigurationProperties;
+import com.juaracoding.cucumberjenkins.utils.Constants;
+import com.juaracoding.cucumberjenkins.utils.TestCases;
+import com.juaracoding.cucumberjenkins.utils.Utils;
+import com.relevantcodes.extentreports.ExtentReports;
+import com.relevantcodes.extentreports.ExtentTest;
+import com.relevantcodes.extentreports.LogStatus;
+
+import io.cucumber.java.After;
+import io.cucumber.java.AfterAll;
+import io.cucumber.java.AfterStep;
+import io.cucumber.java.Before;
+import io.cucumber.java.Scenario;
+import io.cucumber.java.en.Given;
+import io.cucumber.java.en.Then;
+import io.cucumber.java.en.When;
+import io.cucumber.spring.CucumberContextConfiguration;
+
+@CucumberContextConfiguration
+@ContextConfiguration(classes = AutomationFrameworkConfig.class)
+public class StepDefinition {
+
+	private static WebDriver driver;
+	private LoginPage loginPage;
+	private BookingPage bookingPage;
+	ExtentTest extentTest;
+	static ExtentReports reports = new ExtentReports("src/main/resources/TestReport.html");
+
+	@Autowired
+	ConfigurationProperties configurationProperties;
+
+	@Before
+	public void initializeObjects() {
+		DriverSingleton.getInstance(configurationProperties.getBrowser());
+		loginPage = new LoginPage();
+		bookingPage = new BookingPage();
+		TestCases[] tests = TestCases.values();
+		extentTest = reports.startTest(tests[Utils.testCount].getTestName());
+		Utils.testCount++;
+	}
+
+	@AfterStep
+	public void getResult(Scenario scenario) throws Exception {
+		if (scenario.isFailed()) {
+			String screenshotPath = Utils.getScreenshot(driver, scenario.getName().replace(" ", "_"));
+			extentTest.log(LogStatus.FAIL, "Screenshot:/n" + extentTest.addScreenCapture(screenshotPath));
+		}
+	}
+
+	@After
+	public void closeObject() {
+		reports.endTest(extentTest);
+		reports.flush();
+	}
+
+	@AfterAll
+	public static void closeBrowser() {
+		driver.quit();
+	}
+
+	@Given("Customer mengakses url")
+	public void customer_mengakses_url() {
+		driver = DriverSingleton.getDriver();
+		driver.get(Constants.URL);
+		extentTest.log(LogStatus.PASS, "Navigating to " + Constants.URL);
+	}
+
+	@When("Customer klik login button")
+	public void customer_klik_login_button() {
+		scroll();
+		loginPage.submitLogin(configurationProperties.getEmail(), configurationProperties.getPassword());
+		extentTest.log(LogStatus.PASS, "Customer klik login button");
+	}
+
+	@Then("Customer berhasil login")
+	public void customer_berhasil_login() {
+		// refresh
+		driver.navigate().refresh();
+		tunggu();
+		assertEquals(configurationProperties.getTextWelcome(), loginPage.getTextWelcome());
+		extentTest.log(LogStatus.PASS, "Customer berhasil login");
+	}
+
+	@When("Customer klik menu My Booking")
+	public void customer_klik_menu_my_booking() {
+		bookingPage.goToMenuMyBooking();
+		extentTest.log(LogStatus.PASS, "Customer klik menu My Booking");
+	}
+
+	@Then("Customer melihat page title")
+	public void customer_melihat_page_title() {
+		assertEquals(configurationProperties.getTextTitleBookingPage(), bookingPage.getTextTitleBookingPage());
+		extentTest.log(LogStatus.PASS, "Customer melihat page title");
+	}
+
+	public static void tunggu() {
+		try {
+			Thread.sleep(1000);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+	}
+
+	public void scroll() {
+		JavascriptExecutor je = (JavascriptExecutor) driver;
+		je.executeScript("window.scrollBy(0,500)");
+	}
+
+}
