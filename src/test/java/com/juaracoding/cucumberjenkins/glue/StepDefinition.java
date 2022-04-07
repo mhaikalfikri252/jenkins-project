@@ -80,7 +80,7 @@ public class StepDefinition {
 
 	@When("Customer klik login button")
 	public void customer_klik_login_button() {
-		scroll();
+//		scroll();
 		loginPage.submitLogin(configurationProperties.getEmail(), configurationProperties.getPassword());
 		extentTest.log(LogStatus.PASS, "Customer klik login button");
 	}
